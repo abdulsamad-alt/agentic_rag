@@ -4,6 +4,21 @@ import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 import streamlit as st
 from core.agent import AgentSystem
+import os
+
+# -------------------------
+# AUTO BUILD INDEX BEFORE AGENT LOADS
+# -------------------------
+
+index_path = "data/vector_db/index.faiss"
+
+if not os.path.exists(index_path):
+    print("⚠️ Index not found. Building...")
+
+    from build_index import main as build_main
+    build_main()
+
+    print("✅ Index built")
 # Auto-build index if not exists
 if not os.path.exists("data/vector_db/index.faiss"):
     print("⚠️ Index not found. Building index...")
