@@ -2,5 +2,3 @@ __pycache__/
 *.pyc
 .env
 venv/
-data/vector_db/
-data/images/
