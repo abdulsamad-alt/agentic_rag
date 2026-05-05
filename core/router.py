@@ -1,4 +1,5 @@
 import re
+import os
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from ingestion.vector_store import load_index
@@ -9,7 +10,20 @@ class QueryRouter:
         # embedding model
         self.model = SentenceTransformer("all-MiniLM-L6-v2")
 
-        # load FAISS
+        # -------------------------
+        # FIX: AUTO BUILD INDEX
+        # -------------------------
+        index_path = "data/vector_db/index.faiss"
+
+        if not os.path.exists(index_path):
+            print("⚠️ Index not found. Building index...")
+
+            from build_index import main as build_main
+            build_main()
+
+            print("✅ Index built successfully")
+
+        # now safe to load
         self.index, self.chunks = load_index()
 
     # -------------------------
