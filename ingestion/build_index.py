@@ -11,7 +11,7 @@ def main():
     # -------------------------
     # PATH FIX (IMPORTANT)
     # -------------------------
-    pdf_path = "data2/raw/sample.pdf"   # ✅ keep PDF inside repo
+    pdf_path = "data/raw/sample.pdf"   # ✅ keep PDF inside repo
 
     if not os.path.exists(pdf_path):
         print("❌ PDF not found at:", pdf_path)

@@ -16,10 +16,14 @@ def build_faiss_index(embeddings, chunks):
     return index
 
 
+import os
+
 def save_index(index, chunks, path="data/vector_db/"):
-    """
-    Save FAISS index + metadata
-    """
+    # ✅ create folder if not exists
+    os.makedirs(path, exist_ok=True)
+
+    import faiss
+    import pickle
 
     faiss.write_index(index, path + "index.faiss")
 
