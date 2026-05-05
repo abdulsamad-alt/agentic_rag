@@ -1,5 +1,9 @@
 import sys
 import os
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+import streamlit as st
+from core.agent import AgentSystem
 # Auto-build index if not exists
 if not os.path.exists("data/vector_db/index.faiss"):
     print("⚠️ Index not found. Building index...")
@@ -8,10 +12,6 @@ if not os.path.exists("data/vector_db/index.faiss"):
     build_main()
 
     print("✅ Index built successfully")
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import streamlit as st
-from core.agent import AgentSystem
-
 # -------------------------
 # PAGE CONFIG
 # -------------------------
