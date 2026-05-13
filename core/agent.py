@@ -13,7 +13,7 @@ class AgentSystem:
 
         # LLM
         genai.configure(api_key=GEMINI_API_KEY)
-        self.llm = genai.GenerativeModel("gemini-1.5-flash") # Or gemini-pro depending on what you used
+        self.llm = genai.GenerativeModel("gemini-2.5-flash-lite") # Or gemini-pro depending on what you used
 
         # Memory
         self.chat_history = []
