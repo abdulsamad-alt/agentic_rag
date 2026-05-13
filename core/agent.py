@@ -1,17 +1,11 @@
 import google.generativeai as genai
-
-from core.router import QueryRouter
 from tools.retriever_tool import RetrieverTool
 from tools.image_tool import ImageTool
 from core.config import GEMINI_API_KEY
 
-
 class AgentSystem:
     def __init__(self):
-        print("🚀 Initializing system...")
-
-        # Router
-        self.router = QueryRouter()
+        print("🚀 Initializing Pure Agentic system...")
 
         # Tools
         self.retriever = RetrieverTool()
@@ -19,7 +13,7 @@ class AgentSystem:
 
         # LLM
         genai.configure(api_key=GEMINI_API_KEY)
-        self.llm = genai.GenerativeModel("gemini-2.5-flash-lite")  # or "gemini-1.5-flash"
+        self.llm = genai.GenerativeModel("gemini-1.5-flash") # Or gemini-pro depending on what you used
 
         # Memory
         self.chat_history = []
@@ -44,162 +38,104 @@ class AgentSystem:
     # -------------------------
     def agent_prompt(self, query):
         memory = self.get_memory_context()
-
         return f"""
-You are an intelligent Computer book teacher for students.
+        You are an intelligent AI agent.
 
-Conversation so far:
-{memory}
+        Conversation so far:
+        {memory}
 
-You have tools:
+        You have access to these tools:
+        1. RetrieverTool(query) → retrieves relevant text from the document.
+        2. ImageTool(query) → analyzes images from the document.
 
-1. RetrieverTool(query) → document text
-2. ImageTool(query) → analyze images
+        Your job:
+        - Decide what tool is needed based on the user's question.
+        - If the question is about document text or concepts → CALL_RETRIEVER: <query>
+        - If the question specifically asks about diagrams, charts, or images → CALL_IMAGE: <query>
+        - If both are needed → CALL_BOTH: <query>
+        - If no tool is needed (e.g., greetings, general chat, or you already know the answer from conversation) → answer directly.
 
-Rules:
-- If question is about document text → CALL_RETRIEVER: <query>
-- If about diagrams/images → CALL_IMAGE: <query>
-- If both → CALL_BOTH: <query>
-- If no tool needed → answer directly
+        STRICT RULES:
+        Only output ONE of these formats if you need a tool:
+        CALL_RETRIEVER: <search query>
+        CALL_IMAGE: <search query>
+        CALL_BOTH: <search query>
+        OR just write your direct answer if no tool is needed.
 
-ONLY output:
-CALL_RETRIEVER: ...
-CALL_IMAGE: ...
-CALL_BOTH: ...
-OR direct answer
-
-User Question:
-{query}
-"""
+        User Question:
+        {query}
+        """
 
     # -------------------------
     # LLM AGENT (TOOL CALLING)
     # -------------------------
     def run_llm_agent(self, query):
         print("🧠 LLM Agent deciding...")
-
         decision = self.llm.generate_content(self.agent_prompt(query)).text.strip()
-        print("🔍 Decision:", decision)
+        print("🔍 Agent Decision:", decision)
 
         memory = self.get_memory_context()
 
-        # RETRIEVER
+        # -------------------------
+        # CALL RETRIEVER
+        # -------------------------
         if decision.startswith("CALL_RETRIEVER:"):
             tool_query = decision.replace("CALL_RETRIEVER:", "").strip()
-
+            print("📄 Using Retriever Tool...")
             context = self.retriever.run(tool_query)
 
             if not context.strip():
                 return "❌ I couldn't find relevant info in the document."
 
             prompt = f"""
-Conversation:
-{memory}
-
-Context:
-{context}
-
-Question:
-{query}
-"""
+            Conversation:
+            {memory}
+            Context:
+            {context}
+            Question:
+            {query}
+            """
             return self.llm.generate_content(prompt).text
 
-        # IMAGE
+        # -------------------------
+        # CALL IMAGE TOOL
+        # -------------------------
         if decision.startswith("CALL_IMAGE:"):
             tool_query = decision.replace("CALL_IMAGE:", "").strip()
+            print("🖼 Using Image Tool...")
             return self.image_tool.run(tool_query)
 
-        # BOTH
+        # -------------------------
+        # CALL BOTH
+        # -------------------------
         if decision.startswith("CALL_BOTH:"):
             tool_query = decision.replace("CALL_BOTH:", "").strip()
-
+            print("🔀 Using BOTH tools...")
             context = self.retriever.run(tool_query)
             image_ans = self.image_tool.run(tool_query)
 
-            prompt = f"""
-Conversation:
-{memory}
+            final_prompt = f"""
+            Conversation:
+            {memory}
+            Text Context:
+            {context}
+            Image Insight:
+            {image_ans}
+            Question:
+            {query}
+            """
+            return self.llm.generate_content(final_prompt).text
 
-Text Context:
-{context}
-
-Image Insight:
-{image_ans}
-
-Question:
-{query}
-"""
-            return self.llm.generate_content(prompt).text
-
-        # DIRECT
+        # -------------------------
+        # DIRECT ANSWER
+        # -------------------------
         return decision
 
     # -------------------------
-    # FAST RETRIEVAL
-    # -------------------------
-    def run_retrieval(self, query):
-        print("📄 Retrieval path...")
-
-        context = self.retriever.run(query)
-
-        if not context.strip():
-            return "❌ No relevant info found in document."
-
-        memory = self.get_memory_context()
-
-        prompt = f"""
-Conversation:
-{memory}
-
-Context:
-{context}
-
-Question:
-{query}
-"""
-        return self.llm.generate_content(prompt).text
-
-    # -------------------------
-    # MAIN RUN
+    # MAIN ENTRY POINT
     # -------------------------
     def run(self, query):
-        route_info = self.router.route(query)
-        route = route_info["route"]
-
-        print("🧭 Route:", route)
-
-        # GREETING
-        if route == "greeting":
-            response = "👋 Hello! Ask me about the document."
-            self.save_memory(query, response)
-            return response
-
-        # CASUAL
-        if route == "casual":
-            response = "🤖 I’m your document assistant."
-            self.save_memory(query, response)
-            return response
-
-        # INVALID
-        if route == "invalid":
-            response = "⚠️ Please enter a valid query."
-            self.save_memory(query, response)
-            return response
-
-        # GIBBERISH
-        if route == "gibberish":
-            response = "🤖 I couldn't understand that."
-            self.save_memory(query, response)
-            return response
-
-        # RETRIEVAL
-        if route == "retrieval":
-            response = self.run_retrieval(query)
-            self.save_memory(query, response)
-            return response
-
-        # LLM AGENT
-        if route == "llm":
-            response = self.run_llm_agent(query)
-            self.save_memory(query, response)
-            return response
+        # Every query goes straight to the LLM to decide
+        response = self.run_llm_agent(query)
+        self.save_memory(query, response)
+        return response
